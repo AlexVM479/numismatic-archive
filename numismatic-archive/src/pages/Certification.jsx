@@ -408,7 +408,7 @@ export default function Certification() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
                   {/* Coin image circle */}
-                  <div style={{
+                  <div className="coin-showcase-frame" style={{
                     width: 192, height: 192, flexShrink: 0,
                     background: '#e8dfd1',
                     borderRadius: '50%',
@@ -559,6 +559,7 @@ export default function Certification() {
                     return (
                       <div
                         key={tier.id}
+                        className="tier-card"
                         onClick={() => setSelectedTier(tier.id)}
                         style={{
                           background: C.cream,
@@ -571,7 +572,6 @@ export default function Certification() {
                           alignItems: 'center', textAlign: 'center',
                           cursor: 'pointer',
                           position: 'relative',
-                          transition: 'box-shadow 0.2s, border 0.2s',
                         }}
                       >
                         {/* Recommended badge */}
@@ -590,7 +590,7 @@ export default function Certification() {
                         )}
 
                         {/* Icon */}
-                        <span className="material-symbols-outlined" style={{
+                        <span className="material-symbols-outlined tier-icon" style={{
                           fontSize: 28,
                           color: active ? C.navy : C.outline,
                           marginBottom: 16,
@@ -624,7 +624,7 @@ export default function Certification() {
                           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                           paddingLeft: 8, paddingRight: 8,
                         }}>
-                          <span style={{
+                          <span className="tier-price" style={{
                             fontFamily: "'Playfair Display', serif", fontSize: 22, fontStyle: 'normal',
                             color: C.gold,
                             fontWeight: active ? 700 : 600,
@@ -733,7 +733,7 @@ export default function Certification() {
                       </thead>
                         <tbody>
                           {filteredHistory.map((cert, i) => (
-                            <tr key={cert.id} style={{
+                            <tr key={cert.id} className="history-row" style={{
                             background: i % 2 === 0 ? 'transparent' : 'rgba(120,90,0,0.02)',
                             borderBottom: '1px dotted rgba(196,198,208,0.4)',
                           }}>
