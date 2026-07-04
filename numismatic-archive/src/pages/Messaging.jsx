@@ -22,17 +22,17 @@ const C = {
   inkLight:   '#44474f',
   outline:    '#757780',
   outlineVar: '#c4c6d0',
-  // ── Chat dark theme ──
-  chatBg:       '#0d1117',
-  chatPanel:    '#161b22',
-  chatBorder:   'rgba(255,255,255,0.08)',
-  chatSent:     '#15154d',
-  chatSentText: '#e8f5d0',
-  chatRecv:     '#1e2328',
-  chatRecvText: '#e8dcc8',
-  chatInput:    '#21262d',
-  chatGold:     '#c8a96e',
-  chatCheck:    '#7cb342',
+  // ── Panel de mensajería (mismo pergamino/navy/dorado que el resto del sitio) ──
+  chatBg:       '#f6f1eb',
+  chatPanel:    '#fff8f2',
+  chatBorder:   'rgba(196,198,208,0.4)',
+  chatSent:     '#011e4b',
+  chatSentText: '#ffdf9c',
+  chatRecv:     '#ffffff',
+  chatRecvText: '#241a07',
+  chatInput:    '#f4ece1',
+  chatGold:     '#785a00',
+  chatCheck:    '#1a6b2e',
 };
 // ── Emojis comunes para el selector rápido ─────────────────────
 const EMOJI_LIST = [
@@ -138,10 +138,12 @@ function formatDuration(totalSeconds) {
 }
 
 // ── ConversationItem ─────────────────────────────────────────
-function ConversationItem({ conv, isActive, onClick }) {
+function ConversationItem({ conv, isActive, onClick, matchedMessage }) {
   const [hovered, setHovered] = useState(false);
   const lastMsg = conv.messages?.[conv.messages.length - 1];
-  const preview = previewText(lastMsg);
+  // Si la búsqueda encontró coincidencia en un mensaje que no es el último,
+  // mostramos ese mensaje en la vista previa para que se note por qué apareció.
+  const preview = matchedMessage ? matchedMessage.text : previewText(lastMsg);
   const timeLabel = relativeTime(conv.updatedAt);
 
   return (
@@ -154,7 +156,7 @@ function ConversationItem({ conv, isActive, onClick }) {
         cursor: 'pointer',
         backgroundColor: isActive
           ? 'rgba(200,169,110,0.15)'
-          : hovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+          : hovered ? 'rgba(120,90,0,0.05)' : 'transparent',
         borderLeft: `3px solid ${isActive ? C.chatGold : 'transparent'}`,
         transition: 'all 0.15s',
         position: 'relative',
@@ -166,7 +168,7 @@ function ConversationItem({ conv, isActive, onClick }) {
           <div style={{
             position: 'absolute', bottom: 1, right: 1,
             width: 11, height: 11, borderRadius: '50%',
-            backgroundColor: isActive ? C.chatCheck : 'rgba(255,255,255,0.2)',
+            backgroundColor: isActive ? C.chatCheck : 'rgba(196,198,208,0.6)',
             border: `2px solid ${C.chatPanel}`,
           }} />
         </div>
@@ -174,14 +176,14 @@ function ConversationItem({ conv, isActive, onClick }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
             <span style={{
               fontFamily: F.display, fontSize: 15, fontStyle: 'italic', fontWeight: 700,
-              color: isActive ? C.chatGold : '#e8dcc8',
+              color: isActive ? C.chatGold : '#241a07',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {conv.name}
             </span>
             <span style={{
               fontFamily: F.mono, fontSize: 10,
-              color: isActive ? C.chatGold : 'rgba(232,220,200,0.4)',
+              color: isActive ? C.chatGold : 'rgba(36,26,7,0.45)',
               flexShrink: 0, marginLeft: 8,
             }}>
               {timeLabel}
@@ -189,11 +191,15 @@ function ConversationItem({ conv, isActive, onClick }) {
           </div>
           <p style={{
             fontFamily: F.body, fontSize: 13,
-            color: 'rgba(232,220,200,0.5)',
+            color: matchedMessage ? C.gold : 'rgba(36,26,7,0.55)',
             margin: 0, overflow: 'hidden',
             whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+            display: 'flex', alignItems: 'center', gap: 4,
           }}>
-            {preview}
+            {matchedMessage && (
+              <span className="material-symbols-outlined" style={{ fontSize: 13, flexShrink: 0 }}>search</span>
+            )}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}</span>
           </p>
         </div>
       </div>
@@ -205,7 +211,7 @@ function ConversationItem({ conv, isActive, onClick }) {
 function EmojiPicker({ onSelect, onClose, anchorRect }) {
   if (!anchorRect) return null;
 
-  const pickerWidth = 260;
+  const pickerWidth = 300;
   let left = anchorRect.left;
   // Si se sale por la derecha, ajusta hacia la izquierda
   if (left + pickerWidth > window.innerWidth - 16) {
@@ -324,6 +330,14 @@ export default function Messaging() {
 
   const [contactOpen, setContactOpen] = useState(false);
 
+  // ── Búsqueda de mensajes (icono lupa junto a "Archivos") ──
+  const searchInputRef = useRef(null);
+  const [highlightMsgId, setHighlightMsgId] = useState(null);
+  const msgRefs = useRef({});
+
+  // ── Panel "configuración y demás" (icono de 3 puntos junto a "Archivos") ──
+  const [archiveMenuOpen, setArchiveMenuOpen] = useState(false);
+
   // ── Carga inicial desde el backend ──
   useEffect(() => {
     fetchConversations()
@@ -335,15 +349,21 @@ export default function Messaging() {
       .finally(() => setConvsLoading(false));
   }, []);
 
-  // ── Filtrado de conversaciones ──
+  // ── Búsqueda: encuentra el primer mensaje de una conversación que
+  //     contenga el texto buscado (para poder saltar directo a él) ──
+  function findMatchingMessage(conv, query) {
+    if (!query) return null;
+    return conv.messages?.find(m => m.text?.toLowerCase().includes(query)) || null;
+  }
+
+  // ── Filtrado de conversaciones — ahora busca también dentro de los
+  //     mensajes de cada conversación, no solo en el nombre o el último ──
+  const searchQuery = search.trim().toLowerCase();
   const filteredConvs = convs.filter(c => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    const lastMsg = previewText(c.messages?.[c.messages.length - 1]);
-    return (
-      c.name.toLowerCase().includes(q) ||
-      lastMsg.toLowerCase().includes(q)
-    );
+    if (!searchQuery) return true;
+    const nameMatch = c.name.toLowerCase().includes(searchQuery);
+    const anyMessageMatch = c.messages?.some(m => m.text?.toLowerCase().includes(searchQuery));
+    return nameMatch || anyMessageMatch;
   });
 
   // ── Enviar mensaje (texto y/o adjunto) ──
@@ -520,6 +540,42 @@ export default function Messaging() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [contactOpen]);
 
+  useEffect(() => {
+    if (!archiveMenuOpen) return;
+    const handleClick = (e) => {
+      if (!e.target.closest('[data-panel="archive-menu"]')) {
+        setArchiveMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [archiveMenuOpen]);
+
+  // ── Cuando hay un mensaje resaltado por la búsqueda, hace scroll hasta
+  //     él y quita el resaltado a los pocos segundos ──
+  useEffect(() => {
+    if (!highlightMsgId) return;
+    const el = msgRefs.current[highlightMsgId];
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const timer = setTimeout(() => setHighlightMsgId(null), 2200);
+    return () => clearTimeout(timer);
+  }, [highlightMsgId, activeConvId]);
+
+  // ── Clic en el ícono de lupa: enfoca la barra de búsqueda de mensajes ──
+  const handleSearchIconClick = () => {
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  };
+
+  // ── Opciones hardcodeadas del panel de "configuración y demás" ──
+  const ARCHIVE_MENU_OPTIONS = [
+    { icon: 'mark_email_read', label: 'Marcar todo como leído' },
+    { icon: 'archive',         label: 'Mensajes archivados' },
+    { icon: 'notifications',   label: 'Configuración de notificaciones' },
+    { icon: 'settings',        label: 'Configuración' },
+    { icon: 'help',            label: 'Ayuda' },
+  ];
+
 return (
   <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
     {mobile && sidebarOpen && (
@@ -560,16 +616,67 @@ return (
           }}>
             Archivos
           </h2>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {['search', 'more_vert'].map(icon => (
-              <button key={icon} style={{
+          <div style={{ display: 'flex', gap: 4, position: 'relative' }}>
+            <button
+              onClick={handleSearchIconClick}
+              title="Buscar un mensaje"
+              style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(232,220,200,0.5)', padding: 6, borderRadius: '50%',
-                display: 'flex', alignItems: 'center',
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{icon}</span>
+                color: 'rgba(36,26,7,0.55)', padding: 6, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', transition: 'background 0.15s',
+              }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(120,90,0,0.08)'}
+              onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>search</span>
+            </button>
+
+            <div style={{ position: 'relative' }} data-panel="archive-menu">
+              <button
+                onClick={() => setArchiveMenuOpen(v => !v)}
+                title="Más opciones"
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'rgba(36,26,7,0.55)', padding: 6, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', transition: 'background 0.15s',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'rgba(120,90,0,0.08)'}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>more_vert</span>
               </button>
-            ))}
+
+              {archiveMenuOpen && (
+                <div data-panel="archive-menu" style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  width: 240, backgroundColor: C.chatPanel,
+                  border: `1px solid ${C.chatBorder}`,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+                  borderRadius: 8, zIndex: 50, overflow: 'hidden',
+                }}>
+                  {ARCHIVE_MENU_OPTIONS.map(opt => (
+                    <button
+                      key={opt.icon}
+                      onClick={() => {
+                        toast.info(`${opt.label} — próximamente disponible.`);
+                        setArchiveMenuOpen(false);
+                      }}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '11px 16px', background: 'none', border: 'none',
+                        cursor: 'pointer', fontFamily: F.body, fontSize: 13,
+                        color: '#241a07', textAlign: 'left', transition: 'background 0.15s',
+                      }}
+                      onMouseOver={e => e.currentTarget.style.background = 'rgba(120,90,0,0.06)'}
+                      onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: C.chatGold }}>{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -578,18 +685,19 @@ return (
           <div style={{ position: 'relative' }}>
             <span className="material-symbols-outlined" style={{
               position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-              color: 'rgba(232,220,200,0.35)', fontSize: 18, pointerEvents: 'none',
+              color: 'rgba(36,26,7,0.4)', fontSize: 18, pointerEvents: 'none',
             }}>search</span>
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder="Buscar o iniciar una conversación"
+              placeholder="Buscar por nombre o contenido del mensaje"
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
                 width: '100%', backgroundColor: C.chatInput,
                 border: 'none', borderRadius: 20, outline: 'none',
                 paddingLeft: 40, paddingRight: 16, paddingTop: 8, paddingBottom: 8,
-                fontFamily: F.body, fontSize: 13, color: '#e8dcc8',
+                fontFamily: F.body, fontSize: 13, color: '#241a07',
                 boxSizing: 'border-box',
               }}
             />
@@ -610,18 +718,29 @@ return (
               </p>
             </div>
           ) : (
-            filteredConvs.map(conv => (
-              <ConversationItem
-                key={conv.id}
-                conv={conv}
-                isActive={activeConvId === conv.id}
-                onClick={() => {
-                  setActiveConvId(conv.id);
-                  setContactOpen(false);
-                  if (mobile) setMobileView('chat');
-                }}
-              />
-            ))
+            filteredConvs.map(conv => {
+              // Si la búsqueda no coincide con el nombre, el match viene de
+              // algún mensaje — lo mostramos y saltamos directo a él al abrir.
+              const nameMatches = searchQuery && conv.name.toLowerCase().includes(searchQuery);
+              const matchedMessage = searchQuery && !nameMatches
+                ? findMatchingMessage(conv, searchQuery)
+                : null;
+
+              return (
+                <ConversationItem
+                  key={conv.id}
+                  conv={conv}
+                  isActive={activeConvId === conv.id}
+                  matchedMessage={matchedMessage}
+                  onClick={() => {
+                    setActiveConvId(conv.id);
+                    setContactOpen(false);
+                    if (mobile) setMobileView('chat');
+                    if (matchedMessage) setHighlightMsgId(matchedMessage.id);
+                  }}
+                />
+              );
+            })
           )}
         </div>
       </section>
@@ -658,7 +777,7 @@ return (
                 >
                   <Avatar initials={(activeConv.initials || activeConv.name.slice(0, 2)).toUpperCase()} size={40} fontSize={14} />
                   <div style={{ textAlign: 'left' }}>
-                    <h2 style={{ fontFamily: F.display, fontSize: 17, fontStyle: 'italic', fontWeight: 700, color: '#e8dcc8', margin: 0, lineHeight: 1.2 }}>
+                    <h2 style={{ fontFamily: F.display, fontSize: 17, fontStyle: 'italic', fontWeight: 700, color: '#241a07', margin: 0, lineHeight: 1.2 }}>
                       {activeConv.name}
                     </h2>
                     <span style={{ fontFamily: F.mono, fontSize: 10, color: C.chatCheck, letterSpacing: '0.05em' }}>
@@ -687,7 +806,7 @@ return (
                       }}>
                         <Avatar initials={(activeConv.initials || activeConv.name.slice(0, 2)).toUpperCase()} size={48} fontSize={16} />
                         <div>
-                          <p style={{ fontFamily: F.display, fontSize: 17, fontStyle: 'italic', fontWeight: 700, color: '#e8dcc8', margin: 0 }}>
+                          <p style={{ fontFamily: F.display, fontSize: 17, fontStyle: 'italic', fontWeight: 700, color: '#241a07', margin: 0 }}>
                             {activeConv.name}
                           </p>
                           <p style={{ fontFamily: F.mono, fontSize: 9, color: C.chatGold, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '2px 0 0' }}>
@@ -705,8 +824,8 @@ return (
                           <div key={row.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <span className="material-symbols-outlined" style={{ fontSize: 17, color: C.chatGold, flexShrink: 0, marginTop: 1 }}>{row.icon}</span>
                             <div>
-                              <p style={{ fontFamily: F.mono, fontSize: 9, color: 'rgba(232,220,200,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>{row.label}</p>
-                              <p style={{ fontFamily: F.body, fontSize: 13, color: '#e8dcc8', margin: '2px 0 0' }}>{row.value}</p>
+                              <p style={{ fontFamily: F.mono, fontSize: 9, color: 'rgba(36,26,7,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>{row.label}</p>
+                              <p style={{ fontFamily: F.body, fontSize: 13, color: '#241a07', margin: '2px 0 0' }}>{row.value}</p>
                             </div>
                           </div>
                         ))}
@@ -749,7 +868,7 @@ return (
                   { icon: 'more_vert', title: 'Más opciones', action: () => setMoreOptionsOpen(v => !v) },
                 ].map(({ icon, title, action }) => (
                   <button key={icon} title={title} onClick={action} style={{
-                    color: 'rgba(232,220,200,0.6)', background: 'none', border: 'none',
+                    color: 'rgba(36,26,7,0.65)', background: 'none', border: 'none',
                     cursor: 'pointer', padding: 8, borderRadius: '50%', transition: 'background 0.15s',
                     display: 'flex', alignItems: 'center',
                   }}
@@ -777,10 +896,10 @@ return (
                         width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                         padding: '11px 16px', background: 'none', border: 'none',
                         cursor: 'pointer', fontFamily: F.body, fontSize: 13,
-                        color: opt.danger ? '#ef5350' : '#e8dcc8',
+                        color: opt.danger ? '#ef5350' : '#241a07',
                         textAlign: 'left', transition: 'background 0.15s',
                       }}
-                        onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(120,90,0,0.06)'}
                         onMouseOut={e => e.currentTarget.style.background = 'transparent'}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: 18, color: opt.danger ? '#ef5350' : C.chatGold }}>{opt.icon}</span>
@@ -816,18 +935,24 @@ return (
                 const sameType = prevMsg?.type === msg.type;
                 const elapsedMs = now - Number(msg.id);
                 const canDelete = !isRecv && elapsedMs < 3 * 60 * 1000;
+                const isHighlighted = highlightMsgId === msg.id;
 
                 if (isRecv) {
                   return (
-                    <div key={msg.id} style={{
-                      display: 'flex', justifyContent: 'flex-start',
-                      maxWidth: '72%', marginBottom: sameType ? 2 : 8,
-                    }}>
+                    <div
+                      key={msg.id}
+                      ref={el => { msgRefs.current[msg.id] = el; }}
+                      style={{
+                        display: 'flex', justifyContent: 'flex-start',
+                        maxWidth: '72%', marginBottom: sameType ? 2 : 8,
+                      }}
+                    >
                       <div style={{
-                        backgroundColor: C.chatRecv,
+                        backgroundColor: isHighlighted ? 'rgba(200,169,110,0.35)' : C.chatRecv,
                         padding: '8px 12px',
                         borderRadius: sameType ? '4px 18px 18px 4px' : '18px 18px 18px 4px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                        boxShadow: isHighlighted ? '0 0 0 2px rgba(120,90,0,0.5)' : '0 1px 2px rgba(0,0,0,0.15)',
+                        transition: 'background-color 0.4s, box-shadow 0.4s',
                         position: 'relative', maxWidth: '100%',
                       }}>
                         <MessageAttachment attachment={msg.attachment} sent={false} />
@@ -837,7 +962,7 @@ return (
                           </p>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 3 }}>
-                          <span style={{ fontFamily: F.mono, fontSize: 10, color: 'rgba(232,220,200,0.35)', letterSpacing: '0.02em' }}>
+                          <span style={{ fontFamily: F.mono, fontSize: 10, color: 'rgba(36,26,7,0.4)', letterSpacing: '0.02em' }}>
                             {msg.time}
                           </span>
                         </div>
@@ -847,11 +972,15 @@ return (
                 }
 
                 return (
-                  <div key={msg.id} style={{
-                    display: 'flex', justifyContent: 'flex-end', alignSelf: 'flex-end',
-                    maxWidth: '72%', width: '100%', marginBottom: sameType ? 2 : 8,
-                    gap: 6, alignItems: 'flex-end',
-                  }}>
+                  <div
+                    key={msg.id}
+                    ref={el => { msgRefs.current[msg.id] = el; }}
+                    style={{
+                      display: 'flex', justifyContent: 'flex-end', alignSelf: 'flex-end',
+                      maxWidth: '72%', width: '100%', marginBottom: sameType ? 2 : 8,
+                      gap: 6, alignItems: 'flex-end',
+                    }}
+                  >
                     {canDelete && (
                       <button
                         onClick={() => handleDeleteMessage(msg.id)}
@@ -869,10 +998,11 @@ return (
                       </button>
                     )}
                     <div style={{
-                      backgroundColor: C.chatSent,
+                      backgroundColor: isHighlighted ? 'rgba(120,90,0,0.85)' : C.chatSent,
                       padding: '8px 12px',
                       borderRadius: sameType ? '18px 4px 4px 18px' : '18px 18px 4px 18px',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                      boxShadow: isHighlighted ? '0 0 0 2px rgba(255,223,156,0.7)' : '0 1px 2px rgba(0,0,0,0.25)',
+                      transition: 'background-color 0.4s, box-shadow 0.4s',
                       position: 'relative',
                     }}>
                       <MessageAttachment attachment={msg.attachment} sent={true} />
@@ -882,7 +1012,7 @@ return (
                         </p>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                        <span style={{ fontFamily: F.mono, fontSize: 10, color: 'rgba(232,240,208,0.45)', letterSpacing: '0.02em' }}>
+                        <span style={{ fontFamily: F.mono, fontSize: 10, color: 'rgba(255,223,156,0.65)', letterSpacing: '0.02em' }}>
                           {msg.time}
                         </span>
                         <span style={{ fontSize: 12, color: C.chatCheck, lineHeight: 1 }}>✓✓</span>
@@ -910,7 +1040,7 @@ return (
                   </span>
                   <button onClick={cancelRecording} style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'rgba(232,220,200,0.5)', display: 'flex', alignItems: 'center', padding: 4,
+                    color: 'rgba(36,26,7,0.55)', display: 'flex', alignItems: 'center', padding: 4,
                   }}>
                     <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
                   </button>
@@ -934,12 +1064,12 @@ return (
                         }}
                         style={{
                           width: 38, height: 38, borderRadius: '50%', background: 'none',
-                          border: 'none', cursor: 'pointer', color: 'rgba(200,169,110,0.7)',
+                          border: 'none', cursor: 'pointer', color: 'rgba(120,90,0,0.75)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           transition: 'color 0.15s',
                         }}
                         onMouseOver={e => e.currentTarget.style.color = C.chatGold}
-                        onMouseOut={e => e.currentTarget.style.color = 'rgba(200,169,110,0.7)'}
+                        onMouseOut={e => e.currentTarget.style.color = 'rgba(120,90,0,0.75)'}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: 24 }}>sentiment_satisfied</span>
                       </button>
@@ -947,21 +1077,21 @@ return (
                     </div>
                     <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{
                       width: 38, height: 38, borderRadius: '50%', background: 'none',
-                      border: 'none', cursor: 'pointer', color: 'rgba(200,169,110,0.7)',
+                      border: 'none', cursor: 'pointer', color: 'rgba(120,90,0,0.75)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                       onMouseOver={e => e.currentTarget.style.color = C.chatGold}
-                      onMouseOut={e => e.currentTarget.style.color = 'rgba(200,169,110,0.7)'}
+                      onMouseOut={e => e.currentTarget.style.color = 'rgba(120,90,0,0.75)'}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 22 }}>attachment</span>
                     </button>
                     <button onClick={() => cameraInputRef.current?.click()} disabled={uploading} style={{
                       width: 38, height: 38, borderRadius: '50%', background: 'none',
-                      border: 'none', cursor: 'pointer', color: 'rgba(200,169,110,0.7)',
+                      border: 'none', cursor: 'pointer', color: 'rgba(120,90,0,0.75)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}
                       onMouseOver={e => e.currentTarget.style.color = C.chatGold}
-                      onMouseOut={e => e.currentTarget.style.color = 'rgba(200,169,110,0.7)'}
+                      onMouseOut={e => e.currentTarget.style.color = 'rgba(120,90,0,0.75)'}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 22 }}>photo_camera</span>
                     </button>
@@ -979,7 +1109,7 @@ return (
                       disabled={sending}
                       style={{
                         flex: 1, backgroundColor: 'transparent', border: 'none', outline: 'none',
-                        resize: 'none', fontFamily: F.body, fontSize: 14.5, color: '#e8dcc8',
+                        resize: 'none', fontFamily: F.body, fontSize: 14.5, color: '#241a07',
                         lineHeight: 1.5, overflow: 'hidden', maxHeight: 120,
                       }}
                     />
@@ -1037,8 +1167,8 @@ return (
     <style>{`
       @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
       @keyframes spin { to { transform: rotate(360deg); } }
-      textarea::placeholder { color: rgba(232,220,200,0.3); }
-      input::placeholder { color: rgba(232,220,200,0.3); }
+      textarea::placeholder { color: rgba(36,26,7,0.35); }
+      input::placeholder { color: rgba(36,26,7,0.35); }
     `}</style>
   </div>
 );

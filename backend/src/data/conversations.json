@@ -84,9 +84,20 @@
         "text": "🔍",
         "time": "01:30 p. m.",
         "date": "20 de junio de 2026"
+      },
+      {
+        "id": 1783179926209,
+        "type": "sent",
+        "text": "",
+        "time": "10:45 a. m.",
+        "date": "04 de julio de 2026",
+        "attachment": {
+          "url": "/api/images/messages/messages-1783179926156.png",
+          "type": "image"
+        }
       }
     ],
-    "updatedAt": "2026-06-20T18:30:23.629Z"
+    "updatedAt": "2026-07-04T15:45:26.209Z"
   },
   {
     "id": 3,
@@ -169,8 +180,19 @@
           "url": "/api/images/messages/messages-1782015912317.webm",
           "type": "audio"
         }
+      },
+      {
+        "id": 1783179943729,
+        "type": "sent",
+        "text": "",
+        "time": "10:45 a. m.",
+        "date": "04 de julio de 2026",
+        "attachment": {
+          "url": "/api/images/messages/messages-1783179943691.webm",
+          "type": "audio"
+        }
       }
     ],
-    "updatedAt": "2026-06-30T00:55:16.250Z"
+    "updatedAt": "2026-07-04T15:45:43.729Z"
   }
 ]
