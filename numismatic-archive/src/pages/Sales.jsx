@@ -73,7 +73,7 @@ function CornerTabs({ gold = false }) {
 function StatusBadge({ status }) {
   const icons = { Completada: 'task_alt', Cancelada: 'cancel', Pendiente: 'pending' };
   return (
-    <span style={{
+    <span className={status === 'Pendiente' ? 'status-badge-pending' : undefined} style={{
       ...badgeStyle(status),
       fontFamily: F.mono, fontSize: 9, fontWeight: 700,
       textTransform: 'uppercase', letterSpacing: '0.1em',
@@ -95,6 +95,7 @@ function PendingSaleCard({ sale, onView, onComplete, onCancel, coin }) {
 
   return (
     <div
+      className="pending-card"
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -109,7 +110,7 @@ function PendingSaleCard({ sale, onView, onComplete, onCancel, coin }) {
 
       {/* PENDIENTE stamp */}
       <div style={{ position: 'absolute', top: 10, right: 10 }}>
-        <span style={{
+        <span className="pending-stamp" style={{
           border: '2px solid rgba(120,90,0,0.5)', color: C.gold,
           padding: '2px 8px', fontSize: 8, fontFamily: F.mono,
           fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em',
@@ -120,7 +121,7 @@ function PendingSaleCard({ sale, onView, onComplete, onCancel, coin }) {
 
       {/* Coin image + info */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 16, alignItems: 'flex-start' }}>
-        <div style={{
+        <div className="pending-coin-avatar" style={{
           width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
           background: '#e8dfd1', overflow: 'hidden',
           border: '1px solid rgba(0,0,0,0.08)',
@@ -140,7 +141,7 @@ function PendingSaleCard({ sale, onView, onComplete, onCancel, coin }) {
             fontFamily: F.display, fontSize: 18, fontStyle: 'italic', color: C.navy,
             marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{sale.coinName}</p>
-          <p style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: C.gold }}>
+          <p className="pending-price" style={{ fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: C.gold }}>
             S/ {Number(sale.salePrice).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
           </p>
         </div>
@@ -193,6 +194,7 @@ function SaleRow({ sale, onView, onCancel, coin, index }) {
 
   return (
     <tr
+      className="sale-row"
       style={{
         background: hov ? 'rgba(1,30,75,0.04)' : index % 2 === 0 ? 'transparent' : 'rgba(120,90,0,0.02)',
         transition: 'background 0.15s',
@@ -211,7 +213,7 @@ function SaleRow({ sale, onView, onCancel, coin, index }) {
       {/* Pieza */}
       <td style={{ padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
+          <div className="sale-avatar" style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
             background: '#e8dfd1', overflow: 'hidden',
             border: '1px solid rgba(0,0,0,0.07)',
@@ -242,7 +244,7 @@ function SaleRow({ sale, onView, onCancel, coin, index }) {
 
       {/* Monto */}
       <td style={{ padding: '14px 16px', textAlign: 'right', fontFamily: F.mono, fontSize: 12, fontWeight: 700, color: C.gold, whiteSpace: 'nowrap' }}>
-        S/ {Number(sale.salePrice).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+        <span className="sale-amount">S/ {Number(sale.salePrice).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
       </td>
 
       {/* Estado */}
@@ -267,6 +269,7 @@ function ActionIconBtn({ icon, title, onClick, danger = false, hovered = false }
   const [hov, setHov] = useState(false);
   return (
     <button
+      className="action-icon-btn"
       onClick={onClick} title={title}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -538,7 +541,7 @@ export default function Sales() {
               </button>
 
               {filterOpen && (
-                <div style={{
+                <div className="filter-panel-enter" style={{
                   position: 'absolute', top: '100%', right: 0, marginTop: 8, zIndex: 30,
                   background: '#ffffff',
                   border: '1px solid rgba(196,179,145,0.4)',
