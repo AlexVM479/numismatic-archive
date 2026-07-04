@@ -51,9 +51,24 @@ const BADGE_META = {
 };
 
 const ROLE_COLORS = {
-  usuario:      { bg:'rgba(1,30,75,0.08)',   color:'#011e4b', border:'rgba(1,30,75,0.2)' },
-  certificador: { bg:'rgba(120,90,0,0.1)',   color:'#785a00', border:'rgba(120,90,0,0.3)' },
-  admin:        { bg:'rgba(186,26,26,0.08)', color:'#ba1a1a', border:'rgba(186,26,26,0.2)' },
+  usuario: {
+    bg:'rgba(1,30,75,0.08)',   color:'#011e4b', border:'rgba(1,30,75,0.22)',
+    wash: 'linear-gradient(135deg, rgba(1,30,75,0.06) 0%, #ffffff 60%)',
+    avatarGradient: 'linear-gradient(135deg, #1c3461 0%, #011e4b 100%)',
+    hoverGlow: 'rgba(1,30,75,0.18)',
+  },
+  certificador: {
+    bg:'rgba(120,90,0,0.1)',   color:'#785a00', border:'rgba(120,90,0,0.32)',
+    wash: 'linear-gradient(135deg, rgba(120,90,0,0.08) 0%, #ffffff 60%)',
+    avatarGradient: 'linear-gradient(135deg, #b8860b 0%, #4a3600 100%)',
+    hoverGlow: 'rgba(120,90,0,0.22)',
+  },
+  admin: {
+    bg:'rgba(186,26,26,0.08)', color:'#ba1a1a', border:'rgba(186,26,26,0.28)',
+    wash: 'linear-gradient(135deg, rgba(186,26,26,0.07) 0%, #ffffff 60%)',
+    avatarGradient: 'linear-gradient(135deg, #c62828 0%, #6b0000 100%)',
+    hoverGlow: 'rgba(186,26,26,0.2)',
+  },
 };
 
 export default function UserSearch() {
@@ -174,7 +189,7 @@ export default function UserSearch() {
             <p style={{ fontFamily: F.body, fontSize: 15, fontStyle:'italic' }}>No se encontraron eruditos con ese nombre.</p>
           </div>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap: 12 }}>
+          <div style={{ display:'flex', flexDirection:'column', gap: 18 }}>
             {results.map(u => {
               const rc = ROLE_COLORS[u.role] || ROLE_COLORS.usuario;
               return (
@@ -183,20 +198,20 @@ export default function UserSearch() {
                   onClick={() => navigate(`/profile/${u.id}`)}
                   style={{
                     position:'relative', overflow:'hidden',
-                    backgroundColor:'#ffffff',
-                    border:`1px solid ${C.outlineVar}`,
-                    borderRadius: 6,
-                    padding: mobile ? '16px' : '20px 24px',
+                    background: rc.wash,
+                    border:`1px solid ${rc.border}`,
+                    borderRadius: 10,
+                    padding: mobile ? '20px' : '28px 32px',
                     cursor:'pointer', transition:'all 0.15s',
-                    display:'flex', alignItems:'center', gap: mobile ? 14 : 20,
+                    display:'flex', alignItems:'center', gap: mobile ? 16 : 26,
                   }}
                   onMouseOver={e => {
-                    e.currentTarget.style.borderColor = C.goldDim || '#ecc15d';
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.borderColor = rc.color;
+                    e.currentTarget.style.boxShadow = `0 8px 24px ${rc.hoverGlow}`;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
                   }}
                   onMouseOut={e => {
-                    e.currentTarget.style.borderColor = C.outlineVar;
+                    e.currentTarget.style.borderColor = rc.border;
                     e.currentTarget.style.boxShadow = 'none';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }}
@@ -205,13 +220,13 @@ export default function UserSearch() {
 
                   {/* Avatar */}
                   <div style={{
-                    width: mobile ? 48 : 60, height: mobile ? 48 : 60, borderRadius:'50%', flexShrink:0,
-                    background:'linear-gradient(135deg, #5a4200 0%, #001230 100%)',
+                    width: mobile ? 60 : 80, height: mobile ? 60 : 80, borderRadius:'50%', flexShrink:0,
+                    background: rc.avatarGradient,
                     display:'flex', alignItems:'center', justifyContent:'center',
                     border:`2px solid rgba(255,223,156,0.3)`,
                     boxShadow:'0 2px 8px rgba(0,0,0,0.15)',
                   }}>
-                    <span style={{ fontFamily: F.display, fontSize: mobile ? 18 : 22, fontWeight:700, fontStyle:'italic', color:'#ffffff', userSelect:'none' }}>
+                    <span style={{ fontFamily: F.display, fontSize: mobile ? 22 : 28, fontWeight:700, fontStyle:'italic', color:'#ffffff', userSelect:'none' }}>
                       {u.name.split(' ').map(w=>w[0]).filter(c=>/[A-Z]/i.test(c)).slice(0,2).join('')}
                     </span>
                   </div>
@@ -219,21 +234,21 @@ export default function UserSearch() {
                   {/* Info */}
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                      <h3 style={{ fontFamily: F.display, fontSize: mobile ? 16 : 18, fontWeight:700, fontStyle:'italic', color: C.navy, margin:0 }}>
+                      <h3 style={{ fontFamily: F.display, fontSize: mobile ? 19 : 22, fontWeight:700, fontStyle:'italic', color: C.navy, margin:0 }}>
                         {u.name}
                       </h3>
                       <span style={{
-                        padding:'3px 10px', borderRadius:9999,
-                        fontFamily: F.mono, fontSize: 9, letterSpacing:'0.1em', textTransform:'uppercase',
+                        padding:'4px 12px', borderRadius:9999,
+                        fontFamily: F.mono, fontSize: 10, letterSpacing:'0.1em', textTransform:'uppercase',
                         backgroundColor: rc.bg, color: rc.color, border:`1px solid ${rc.border}`,
                       }}>
                         {u.roleLabel}
                       </span>
                     </div>
-                    <p style={{ fontFamily: F.mono, fontSize: 10, color: C.outline, margin:'4px 0 8px', letterSpacing:'0.05em' }}>
+                    <p style={{ fontFamily: F.mono, fontSize: 11, color: C.outline, margin:'6px 0 12px', letterSpacing:'0.05em' }}>
                       @{u.username}
                     </p>
-                    <div style={{ display:'flex', gap: mobile ? 12 : 20, flexWrap:'wrap' }}>
+                    <div style={{ display:'flex', gap: mobile ? 14 : 24, flexWrap:'wrap' }}>
                       {u.role === 'usuario' && (
                         <>
                           <Stat icon="toll" label="Monedas" value={u.coins} />
@@ -249,24 +264,24 @@ export default function UserSearch() {
                   </div>
 
                   {/* Badges + rating */}
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8, flexShrink:0 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:4, backgroundColor:'#ffdf9c', borderRadius:9999, padding:'3px 10px', boxShadow:'0 1px 4px rgba(0,0,0,0.15)' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1", color:'#251a00' }}>star</span>
-                      <span style={{ fontFamily: F.mono, fontSize:11, fontWeight:700, color:'#251a00' }}>{u.rating}</span>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:10, flexShrink:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:4, backgroundColor:'#ffdf9c', borderRadius:9999, padding:'4px 12px', boxShadow:'0 1px 4px rgba(0,0,0,0.15)' }}>
+                      <span className="material-symbols-outlined" style={{ fontSize:13, fontVariationSettings:"'FILL' 1", color:'#251a00' }}>star</span>
+                      <span style={{ fontFamily: F.mono, fontSize:12, fontWeight:700, color:'#251a00' }}>{u.rating}</span>
                     </div>
                     {!mobile && (
-                      <div style={{ display:'flex', gap:6 }}>
+                      <div style={{ display:'flex', gap:8 }}>
                         {u.badges.map(b => {
                           const bm = BADGE_META[b] || { color:'#ffdf9c', glow:'rgba(255,223,156,0.3)' };
                           return (
-                            <div key={b} style={{ width:28, height:28, borderRadius:'50%', backgroundColor:'rgba(0,0,0,0.06)', display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid rgba(0,0,0,0.1)` }}>
-                              <span className="material-symbols-outlined" style={{ fontSize:16, color: bm.color, fontVariationSettings:"'FILL' 1" }}>{b}</span>
+                            <div key={b} style={{ width:34, height:34, borderRadius:'50%', backgroundColor:'rgba(0,0,0,0.06)', display:'flex', alignItems:'center', justifyContent:'center', border:`1px solid rgba(0,0,0,0.1)` }}>
+                              <span className="material-symbols-outlined" style={{ fontSize:19, color: bm.color, fontVariationSettings:"'FILL' 1" }}>{b}</span>
                             </div>
                           );
                         })}
                       </div>
                     )}
-                    <span className="material-symbols-outlined" style={{ fontSize:20, color: C.outlineVar }}>chevron_right</span>
+                    <span className="material-symbols-outlined" style={{ fontSize:22, color: C.outlineVar }}>chevron_right</span>
                   </div>
                 </div>
               );
@@ -281,9 +296,9 @@ export default function UserSearch() {
 
 function Stat({ icon, label, value, text }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-      <span className="material-symbols-outlined" style={{ fontSize:14, color:'#785a00', opacity:0.7 }}>{icon}</span>
-      <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:10, color:'#44474f' }}>
+    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+      <span className="material-symbols-outlined" style={{ fontSize:15, color:'#785a00', opacity:0.7 }}>{icon}</span>
+      <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:11, color:'#44474f' }}>
         {text ? value : <><strong style={{ color:'#011e4b' }}>{value}</strong> {label}</>}
         {text && <> · <strong style={{ color:'#011e4b' }}>{value}</strong></>}
       </span>

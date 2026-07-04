@@ -22,6 +22,37 @@ const RARITY_ICON = {
   'Común':      'shield',
 };
 
+// ── Estilo por tipo/rareza de guardián — cada rareza tiene su propio
+//     color de acento, fondo con tinte y resplandor, coherentes con los
+//     colores que ya usan los badges (gold/blue/green/navy) ──
+const RARITY_STYLE = {
+  'Legendario': {
+    accent: '#785a00',
+    wash:   'linear-gradient(150deg, rgba(254,209,108,0.4) 0%, #fff8f2 62%)',
+    border: 'rgba(120,90,0,0.4)',
+    glow:   'rgba(120,90,0,0.45)',
+  },
+  'Épico': {
+    accent: '#2f5fd8',
+    wash:   'linear-gradient(150deg, rgba(220,232,255,0.75) 0%, #fff8f2 62%)',
+    border: 'rgba(47,95,216,0.35)',
+    glow:   'rgba(47,95,216,0.4)',
+  },
+  'Raro': {
+    accent: '#1a6b2e',
+    wash:   'linear-gradient(150deg, rgba(208,245,217,0.75) 0%, #fff8f2 62%)',
+    border: 'rgba(26,107,46,0.35)',
+    glow:   'rgba(26,107,46,0.4)',
+  },
+  'Común': {
+    accent: '#011e4b',
+    wash:   'linear-gradient(150deg, rgba(1,30,75,0.09) 0%, #fff8f2 62%)',
+    border: 'rgba(1,30,75,0.3)',
+    glow:   'rgba(1,30,75,0.35)',
+  },
+};
+const DEFAULT_RARITY_STYLE = RARITY_STYLE['Común'];
+
 // ── Corner tabs helper (mismo patrón que Certification.jsx / Ledger.jsx) ──
 function Corners() {
   const base = {
@@ -172,29 +203,33 @@ export default function Mascots() {
               const originalIndex = mascots.findIndex(m => m.id === mascot.id);
               const visual = MASCOT_LIST.find(v => v.id === mascot.id) || MASCOT_LIST[originalIndex % MASCOT_LIST.length];
               const isActive = selectedId === mascot.id;
+              const rs = RARITY_STYLE[mascot.rarity] || DEFAULT_RARITY_STYLE;
               return (
                 <div
                   key={mascot.id}
                   onClick={() => handleSelect(mascot.id)}
                   className={isActive ? 'active-mascot-card' : ''}
                   style={{
-                    backgroundColor: DS.parchmentLow,
-                    border: isActive ? `2px solid ${DS.gold}` : `1px solid rgba(196,198,208,0.4)`,
-                    borderRadius: 6, padding: 28, position: 'relative', cursor: 'pointer',
-                    boxShadow: isActive ? '0 0 20px rgba(120,90,0,0.2)' : '0 2px 8px rgba(0,0,0,0.06)',
+                    position: 'relative',
+                    background: rs.wash,
+                    border: isActive ? `2px solid ${rs.accent}` : `1px solid ${rs.border}`,
+                    borderRadius: 8, padding: 28, cursor: 'pointer',
+                    boxShadow: isActive ? 'none' : '0 2px 8px rgba(0,0,0,0.06)',
                     transition: 'border-color 0.2s, box-shadow 0.2s, transform 0.2s',
+                    transform: isActive ? 'scale(1.015)' : 'scale(1)',
                     display: 'flex', flexDirection: 'column', gap: 14,
+                    '--glow-color': rs.glow,
                   }}
                   onMouseEnter={e => {
                     if (!isActive) {
-                      e.currentTarget.style.borderColor = DS.gold;
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(120,90,0,0.14)';
+                      e.currentTarget.style.borderColor = rs.accent;
+                      e.currentTarget.style.boxShadow = `0 6px 20px ${rs.glow}`;
                       e.currentTarget.style.transform = 'translateY(-2px)';
                     }
                   }}
                   onMouseLeave={e => {
                     if (!isActive) {
-                      e.currentTarget.style.borderColor = 'rgba(196,198,208,0.4)';
+                      e.currentTarget.style.borderColor = rs.border;
                       e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
                       e.currentTarget.style.transform = 'translateY(0)';
                     }
@@ -202,11 +237,25 @@ export default function Mascots() {
                 >
                   <Corners />
 
+                  {/* Etiqueta "Guardián Actual" — solo en el elegido */}
+                  {isActive && (
+                    <div style={{
+                      position: 'absolute', top: 18, left: -6, zIndex: 3,
+                      background: rs.accent, color: '#ffffff',
+                      fontFamily: DS.fontMono, fontSize: 8, fontWeight: 700,
+                      letterSpacing: '0.14em', textTransform: 'uppercase',
+                      padding: '4px 10px 4px 14px', borderRadius: '0 4px 4px 0',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                    }}>
+                      Guardián Actual
+                    </div>
+                  )}
+
                   {/* Selected checkmark */}
                   {isActive && (
                     <div style={{
                       position: 'absolute', top: -10, right: -10, width: 30, height: 30,
-                      borderRadius: '50%', backgroundColor: DS.gold, color: DS.white,
+                      borderRadius: '50%', backgroundColor: rs.accent, color: DS.white,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.25)', border: `2px solid ${DS.parchmentLow}`,
                       zIndex: 2,
@@ -217,7 +266,7 @@ export default function Mascots() {
 
                   {/* Country & Flag */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontFamily: DS.fontMono, fontSize: 9, letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase', color: DS.gold }}>
+                    <span style={{ fontFamily: DS.fontMono, fontSize: 9, letterSpacing: '0.14em', fontWeight: 700, textTransform: 'uppercase', color: rs.accent }}>
                       {visual.country}
                     </span>
                     <span style={{ fontSize: 18 }}>{visual.flag}</span>
@@ -227,7 +276,7 @@ export default function Mascots() {
                   <div style={{
                     aspectRatio: '1', backgroundColor: DS.cream, borderRadius: 4,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    overflow: 'hidden', border: `1px solid ${DS.outlineVar}`,
+                    overflow: 'hidden', border: `1px solid ${isActive ? rs.accent : DS.outlineVar}`,
                     boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.08)',
                     position: 'relative',
                   }}>
@@ -247,7 +296,7 @@ export default function Mascots() {
                   {/* Name & Symbol */}
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: 32, marginBottom: 6, lineHeight: 1 }}>{mascot.symbol}</div>
-                    <h3 style={{ fontFamily: DS.fontDisplay, fontSize: 21, fontWeight: 700, color: isActive ? DS.gold : DS.navy, fontStyle: 'italic', margin: 0, marginBottom: 8 }}>
+                    <h3 style={{ fontFamily: DS.fontDisplay, fontSize: 21, fontWeight: 700, color: isActive ? rs.accent : DS.navy, fontStyle: 'italic', margin: 0, marginBottom: 8 }}>
                       {mascot.name}
                     </h3>
                     <span className={`badge ${RARITY_BADGE[mascot.rarity] || 'badge-navy'}`} style={{
@@ -269,9 +318,9 @@ export default function Mascots() {
                     style={{
                       width: '100%', padding: '10px 0', marginTop: 4,
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      backgroundColor: isActive ? DS.gold : 'transparent',
-                      color: isActive ? DS.white : DS.gold,
-                      border: `1px solid ${DS.gold}`,
+                      backgroundColor: isActive ? rs.accent : 'transparent',
+                      color: isActive ? DS.white : rs.accent,
+                      border: `1px solid ${rs.accent}`,
                       borderRadius: 4, cursor: 'pointer',
                       fontFamily: DS.fontMono, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                       transition: 'background-color 0.15s, color 0.15s',
